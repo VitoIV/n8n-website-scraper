@@ -1,0 +1,214 @@
+{
+  "name": "SCRAPER VZOR",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        272,
+        80
+      ],
+      "id": "414f6650-6e60-4d7d-b29f-97eac55710e3",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "env-baseurl",
+              "name": "browserlessBaseUrl",
+              "value": "http://browserless:3000",
+              "type": "string"
+            },
+            {
+              "id": "env-token",
+              "name": "browserlessToken",
+              "value": "ENTER_YOUR_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "env-url",
+              "name": "targetUrl",
+              "value": "ENTER_URL_YOU_WANNA_SCRAPE",
+              "type": "string"
+            },
+            {
+              "id": "env-cookie-name",
+              "name": "cookieName",
+              "value": "ENTER_COOKIUE_NAME",
+              "type": "string"
+            },
+            {
+              "id": "env-cookie-value",
+              "name": "cookieValue",
+              "value": "ENTER_COOKIE_VALUE",
+              "type": "string"
+            },
+            {
+              "id": "env-ua",
+              "name": "userAgent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        80
+      ],
+      "id": "7e1bf202-ca79-4e98-b171-142dbebdbe36",
+      "name": "ENV"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cookies = [];\nif ($json.cookieName && $json.cookieValue) {\n  cookies.push({ name: $json.cookieName, value: $json.cookieValue, url: $json.targetUrl });\n}\nreturn [{\n  json: {\n    url: $json.targetUrl,\n    userAgent: $json.userAgent,\n    cookies\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        80
+      ],
+      "id": "32426538-2a68-4885-8f26-b72d7bd580ad",
+      "name": "Build payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$node[\"ENV\"].json[\"browserlessBaseUrl\"]}}/content?token={{$node[\"ENV\"].json[\"browserlessToken\"]}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        80
+      ],
+      "id": "328de776-0558-4053-8040-5ff4ce08b9d6",
+      "name": "HTTP Request (/content)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "pick-html",
+              "name": "html",
+              "value": "={{$json.data ? $json.data : ($json.body && $json.body.data ? $json.body.data : ($json.body ? $json.body : ''))}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1088,
+        80
+      ],
+      "id": "b4f4a352-269d-4784-b7bf-5efb3aed7052",
+      "name": "Pick HTML"
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $json.html || '';\nconst get = (re) => { const m = html.match(re); return m ? m[1].trim() : null; };\nconst warranty = get(/id=\\\"rowWarranty\\\"[\\s\\S]*?data-testid=\\\"value\\\"[^>]*>([^<]+)/i);\nconst code = get(/data-testid=\\\"more-info-product-code\\\"[\\s\\S]*?data-testid=\\\"value\\\"[^>]*>([^<]+)/i);\nconst productNumber = get(/data-testid=\\\"more-info-product-number\\\"[\\s\\S]*?data-testid=\\\"value\\\"[^>]*>([^<]+)/i);\nreturn [{ json: { warranty, code, productNumber } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        80
+      ],
+      "id": "3b23bcc0-2f04-4f72-ba99-37ca92c2e5c5",
+      "name": "Parse Data"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "ENV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ENV": {
+      "main": [
+        [
+          {
+            "node": "Build payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build payload": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request (/content)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request (/content)": {
+      "main": [
+        [
+          {
+            "node": "Pick HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick HTML": {
+      "main": [
+        [
+          {
+            "node": "Parse Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d02f4989-f8c5-4b27-875e-5618010371f1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b72565eee34250a5bd328cce10141b6a70b728c14458754df682e7fdcf266fd8"
+  },
+  "id": "Mq51x9hAe4CuhIxc",
+  "tags": []
+}
